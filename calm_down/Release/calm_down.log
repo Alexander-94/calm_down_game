@@ -1,0 +1,9 @@
+﻿  main.cpp
+main.cpp(136): warning C4305: 'argument': truncation from 'double' to 'irr::f32'
+  Generating code
+  34 of 34 functions (100.0%) were compiled, the rest were copied from previous compilation.
+    2 functions were new in current compilation
+    0 functions had inline decision re-evaluated but remain unchanged
+  Finished generating code
+  calm_down.vcxproj -> C:\Users\Alexa\Desktop\asdasd\calm_down_game\Release\calm_down.exe
+  calm_down.vcxproj -> C:\Users\Alexa\Desktop\asdasd\calm_down_game\Release\calm_down.pdb (Full PDB)

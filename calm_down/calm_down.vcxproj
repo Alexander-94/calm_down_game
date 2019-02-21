@@ -77,6 +77,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Users\Alexa\Desktop\asdasd\calm_down_game\irrlicht-1.8.4\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\Alexa\Desktop\asdasd\calm_down_game\irrlicht-1.8.4\lib\Win32-visualstudio;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -86,6 +88,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Users\Alexa\Desktop\asdasd\calm_down_game\irrlicht-1.8.4\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\Alexa\Desktop\asdasd\calm_down_game\irrlicht-1.8.4\lib\Win32-visualstudio;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

@@ -1,0 +1,5 @@
+﻿  main.cpp
+c:\users\alexa\desktop\asdasd\calm_down_game\calm_down\main.cpp(136): warning C4305: 'argument': truncation from 'double' to 'irr::f32'
+main.obj : error LNK2019: unresolved external symbol __imp_createDevice referenced in function main
+C:\Users\Alexa\Desktop\asdasd\calm_down_game\irrlicht-1.8.4\lib\Win32-visualstudio\Irrlicht.lib : warning LNK4272: library machine type 'X86' conflicts with target machine type 'x64'
+C:\Users\Alexa\Desktop\asdasd\calm_down_game\x64\Debug\calm_down.exe : fatal error LNK1120: 1 unresolved externals
