@@ -177,7 +177,7 @@ int main() {
     f[19][2] = v[6];
 
     int i = 0;
-    float gap = 0.02;
+    float gap = 0.03;
 
     const int map_len = 20 * map_size * map_size;
     struct map map[map_len];
