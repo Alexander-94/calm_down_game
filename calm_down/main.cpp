@@ -6,16 +6,59 @@
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
+struct map {
+	int face[3];
+};
 
+struct node {
+	irr::core::vector3df vert;
+	int *next;
+};
+
+struct nodes {
+	struct node *node_arr;
+	int node_len;
+	nodes (int map_size) {
+		node_arr = (struct node*)malloc((10 * map_size * map_size + 2) * sizeof(struct node));
+		node_len = 0;
+	}
+	int add(irr::core::vector3df vert) {
+        if (node_len) {
+        	for (int i = 0; i < node_len; ++i) {
+                if (node_arr[i].vert.equals(vert)) {
+                	return i;
+                }
+        	}
+        }
+        node_arr[node_len].vert = vert;
+        ++node_len;
+        return node_len - 1;
+	}
+	~nodes() {
+		free(node_arr);
+	}
+};
+
+irr::core::vector3df vector_combine(irr::core::vector3df v1, irr::core::vector3df v2, irr::core::vector3df v3, float f1, float f2, float f3) {
+	irr::core::vector3df result;
+	result.X = f1 * v1.X + f2 * v2.X + f3 * v3.X;
+	result.Y = f1 * v1.Y + f2 * v2.Y + f3 * v3.Y;
+	result.Z = f1 * v1.Z + f2 * v2.Z + f3 * v3.Z;
+	return result;
+}
 
 int main() {
+
+	// 34 and larger value crashes buffer
+	const int map_size = 33;
+
 	irr::IrrlichtDevice *device = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(1280, 720), 32, false);
 	if (!device) {
 		return 1;
 	}
 	irr::video::IVideoDriver *driver = device->getVideoDriver();
 	irr::scene::ISceneManager *manager = device->getSceneManager();
-	manager->addCameraSceneNode(0, irr::core::vector3df(0, -2, 0), irr::core::vector3df(0, 0, 0));
+	manager->addCameraSceneNode(0, irr::core::vector3df(0.0, -1.7, 0.0), irr::core::vector3df(0.0, 0.0, 0.0));
 	irr::scene::SMesh *mesh = new irr::scene::SMesh();
 	irr::scene::SMeshBuffer *buffer = new irr::scene::SMeshBuffer();
 	mesh->addMeshBuffer(buffer);
@@ -51,94 +94,135 @@ int main() {
 	v[10] = irr::core::vector3df(-x1, -y0, z2);
 	v[11] = irr::core::vector3df(x0, -y1, z0);
 
-	buffer->Vertices.reallocate(60);
-	buffer->Vertices.set_used(60);
+	irr::core::vector3df f[20][3];
 
-	buffer->Vertices[0] = irr::video::S3DVertex(v[0], v[0], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[1] = irr::video::S3DVertex(v[1], v[1], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[2] = irr::video::S3DVertex(v[2], v[2], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[0][0] = v[0];
+	f[0][1] = v[1];
+	f[0][2] = v[2];
 
-	buffer->Vertices[3] = irr::video::S3DVertex(v[0], v[0], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[4] = irr::video::S3DVertex(v[2], v[2], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[5] = irr::video::S3DVertex(v[3], v[3], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[1][0] = v[0];
+	f[1][1] = v[2];
+	f[1][2] = v[3];
 
-	buffer->Vertices[6] = irr::video::S3DVertex(v[0], v[0], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[7] = irr::video::S3DVertex(v[3], v[3], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[8] = irr::video::S3DVertex(v[4], v[4], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[2][0] = v[0];
+	f[2][1] = v[3];
+	f[2][2] = v[4];
 
-	buffer->Vertices[9] = irr::video::S3DVertex(v[0], v[0], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[10] = irr::video::S3DVertex(v[4], v[4], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[11] = irr::video::S3DVertex(v[5], v[5], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[3][0] = v[0];
+	f[3][1] = v[4];
+	f[3][2] = v[5];
 
-	buffer->Vertices[12] = irr::video::S3DVertex(v[0], v[0], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[13] = irr::video::S3DVertex(v[5], v[5], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[14] = irr::video::S3DVertex(v[1], v[1], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[4][0] = v[0];
+	f[4][1] = v[5];
+	f[4][2] = v[1];
 
-	buffer->Vertices[15] = irr::video::S3DVertex(v[1], v[1], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[16] = irr::video::S3DVertex(v[6], v[6], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[17] = irr::video::S3DVertex(v[2], v[2], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[5][0] = v[1];
+	f[5][1] = v[6];
+	f[5][2] = v[2];
 
-	buffer->Vertices[18] = irr::video::S3DVertex(v[2], v[2], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[19] = irr::video::S3DVertex(v[6], v[6], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[20] = irr::video::S3DVertex(v[7], v[7], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[6][0] = v[2];
+	f[6][1] = v[6];
+	f[6][2] = v[7];
 
-	buffer->Vertices[21] = irr::video::S3DVertex(v[2], v[2], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[22] = irr::video::S3DVertex(v[7], v[7], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[23] = irr::video::S3DVertex(v[3], v[3], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[7][0] = v[2];
+	f[7][1] = v[7];
+	f[7][2] = v[3];
 
-	buffer->Vertices[24] = irr::video::S3DVertex(v[3], v[3], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[25] = irr::video::S3DVertex(v[7], v[7], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[26] = irr::video::S3DVertex(v[8], v[8], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[8][0] = v[3];
+	f[8][1] = v[7];
+	f[8][2] = v[8];
 
-	buffer->Vertices[27] = irr::video::S3DVertex(v[3], v[3], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[28] = irr::video::S3DVertex(v[8], v[8], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[29] = irr::video::S3DVertex(v[4], v[4], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[9][0] = v[3];
+	f[9][1] = v[8];
+	f[9][2] = v[4];
 
-	buffer->Vertices[30] = irr::video::S3DVertex(v[4], v[4], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[31] = irr::video::S3DVertex(v[8], v[8], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[32] = irr::video::S3DVertex(v[9], v[9], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[10][0] = v[4];
+	f[10][1] = v[8];
+	f[10][2] = v[9];
 
-	buffer->Vertices[33] = irr::video::S3DVertex(v[4], v[4], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[34] = irr::video::S3DVertex(v[9], v[9], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[35] = irr::video::S3DVertex(v[5], v[5], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[11][0] = v[4];
+	f[11][1] = v[9];
+	f[11][2] = v[5];
 
-	buffer->Vertices[36] = irr::video::S3DVertex(v[5], v[5], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[37] = irr::video::S3DVertex(v[9], v[9], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[38] = irr::video::S3DVertex(v[10], v[10], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[12][0] = v[5];
+	f[12][1] = v[9];
+	f[12][2] = v[10];
 
-	buffer->Vertices[39] = irr::video::S3DVertex(v[5], v[5], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[40] = irr::video::S3DVertex(v[10], v[10], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[41] = irr::video::S3DVertex(v[1], v[1], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[13][0] = v[5];
+	f[13][1] = v[10];
+	f[13][2] = v[1];
 
-	buffer->Vertices[42] = irr::video::S3DVertex(v[1], v[1], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[43] = irr::video::S3DVertex(v[10], v[10], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[44] = irr::video::S3DVertex(v[6], v[6], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[14][0] = v[1];
+	f[14][1] = v[10];
+	f[14][2] = v[6];
 
-	buffer->Vertices[45] = irr::video::S3DVertex(v[6], v[6], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[46] = irr::video::S3DVertex(v[11], v[11], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[47] = irr::video::S3DVertex(v[7], v[7], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[15][0] = v[6];
+	f[15][1] = v[11];
+	f[15][2] = v[7];
 
-	buffer->Vertices[48] = irr::video::S3DVertex(v[7], v[7], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[49] = irr::video::S3DVertex(v[11], v[11], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[50] = irr::video::S3DVertex(v[8], v[8], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[16][0] = v[7];
+	f[16][1] = v[11];
+	f[16][2] = v[8];
 
-	buffer->Vertices[51] = irr::video::S3DVertex(v[8], v[8], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[52] = irr::video::S3DVertex(v[11], v[11], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[53] = irr::video::S3DVertex(v[9], v[9], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[17][0] = v[8];
+	f[17][1] = v[11];
+	f[17][2] = v[9];
 
-	buffer->Vertices[54] = irr::video::S3DVertex(v[9], v[9], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[55] = irr::video::S3DVertex(v[11], v[11], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[56] = irr::video::S3DVertex(v[10], v[10], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[18][0] = v[9];
+	f[18][1] = v[11];
+	f[18][2] = v[10];
 
-	buffer->Vertices[57] = irr::video::S3DVertex(v[10], v[10], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-    buffer->Vertices[58] = irr::video::S3DVertex(v[11], v[11], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
-	buffer->Vertices[59] = irr::video::S3DVertex(v[6], v[6], irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+	f[19][0] = v[10];
+	f[19][1] = v[11];
+	f[19][2] = v[6];
 
-    buffer->Indices.reallocate(60);
-    buffer->Indices.set_used(60);
+	int i = 0;
+	float gap = 0.02;
 
-    for (int i = 0; i < 60; ++i) {
-    	buffer->Indices[i] = i;
+    const int map_len = 20 * map_size * map_size;
+	struct map map[map_len];
+	struct nodes nodes(map_size);
+
+	for (int j = 0; j < 20; ++j) {
+		for (int k = 0; k < map_size; ++k) {
+			for (int l = 0; l < map_size; ++l) {
+				if ((k + l) <= (map_size - 1)) {
+					map[i].face[0] = nodes.add(vector_combine(f[j][0], f[j][1], f[j][2], k, l, map_size - k - l));
+	                map[i].face[1] = nodes.add(vector_combine(f[j][0], f[j][1], f[j][2], k + 1, l, map_size - 1 - k - l));
+	                map[i].face[2] = nodes.add(vector_combine(f[j][0], f[j][1], f[j][2], k, l + 1, map_size - 1 - k - l));
+	                ++i;
+	                if ((k + l) != map_size - 1) {
+	                	map[i].face[0] = nodes.add(vector_combine(f[j][0], f[j][1], f[j][2], k + 1, l + 1, map_size - 2 - k - l));
+	                    map[i].face[1] = map[i - 1].face[2];
+	                    map[i].face[2] = map[i - 1].face[1];
+	                    ++i;
+	                }
+	            }
+			}
+		}
+	}
+
+	for (i = 0; i < nodes.node_len; ++i) {
+		nodes.node_arr[i].vert.normalize();
+	}
+
+    buffer->Vertices.reallocate(map_len * 3);
+    buffer->Vertices.set_used(map_len * 3);
+    for (i = 0; i < map_len; ++i) {
+    	irr::core::vector3df temp = vector_combine(nodes.node_arr[map[i].face[0]].vert, nodes.node_arr[map[i].face[1]].vert, nodes.node_arr[map[i].face[2]].vert, 1 - gap * 2, gap, gap);
+    	buffer->Vertices[i * 3 + 0] = irr::video::S3DVertex(temp, temp, irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+    	temp = vector_combine(nodes.node_arr[map[i].face[0]].vert, nodes.node_arr[map[i].face[1]].vert, nodes.node_arr[map[i].face[2]].vert, gap, 1 - gap * 2, gap);
+    	buffer->Vertices[i * 3 + 1] = irr::video::S3DVertex(temp, temp, irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+    	temp = vector_combine(nodes.node_arr[map[i].face[0]].vert, nodes.node_arr[map[i].face[1]].vert, nodes.node_arr[map[i].face[2]].vert, gap, gap, 1 - gap * 2);
+    	buffer->Vertices[i * 3 + 2] = irr::video::S3DVertex(temp, temp, irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+    }
+
+    buffer->Indices.reallocate(map_len * 3);
+    buffer->Indices.set_used(map_len * 3);
+    for (i = 0; i < map_len; ++i) {
+    	buffer->Indices[i * 3 + 0] = i * 3 + 0;
+    	buffer->Indices[i * 3 + 1] = i * 3 + 1;
+    	buffer->Indices[i * 3 + 2] = i * 3 + 2;
     }
 
     buffer->recalculateBoundingBox();
