@@ -1,183 +1,244 @@
-/** Example 010 Shaders
-
-This tutorial shows how to use shaders for D3D8, D3D9, OpenGL, and Cg with the
-engine and how to create new material types with them. It also shows how to
-disable the generation of mipmaps at texture loading, and how to use text scene
-nodes.
-
-This tutorial does not explain how shaders work. I would recommend to read the
-D3D, OpenGL, or Cg documentation, to search a tutorial, or to read a book about
-this.
-
-At first, we need to include all headers and do the stuff we always do, like in
-nearly all other tutorials:
-*/
 #include <irrlicht.h>
-#include <iostream>
-#include "driverChoice.h"
-
-using namespace irr;
+#include <S3DVertex.h>
+#include <cmath>
 
 #ifdef _MSC_VER
 #pragma comment(lib, "Irrlicht.lib")
 #endif
 
-/*
-Because we want to use some interesting shaders in this tutorials, we need to
-set some data for them to make them able to compute nice colors. In this
-example, we'll use a simple vertex shader which will calculate the color of the
-vertex based on the position of the camera.
-For this, the shader needs the following data: The inverted world matrix for
-transforming the normal, the clip matrix for transforming the position, the
-camera position and the world position of the object for the calculation of the
-angle of light, and the color of the light. To be able to tell the shader all
-this data every frame, we have to derive a class from the
-IShaderConstantSetCallBack interface and override its only method, namely
-OnSetConstants(). This method will be called every time the material is set.
-The method setVertexShaderConstant() of the IMaterialRendererServices interface
-is used to set the data the shader needs. If the user chose to use a High Level
-shader language like HLSL instead of Assembler in this example, you have to set
-the variable name as parameter instead of the register index.
-*/
-
-using namespace irr;
-using namespace core;
-using namespace scene;
-using namespace video;
-using namespace io;
-using namespace gui;
-using namespace std;
-
-#define SPEED 2
-extern bool fullscreen = false;
-
-
-IrrlichtDevice* device = 0;  // окно которое выдает движок для работы с трехмерным миром
-IVideoDriver* driver;    // то через что выводится вся графика
-ISceneManager* smgr;     // менеджер сцены - через него делается почти вся работа над объектами
-IGUIEnvironment* guienv;    // графический интерфейс
-
-
-//создаем ландшафт
-ITerrainSceneNode* oCreateTerrain()
-{ 
-	ITerrainSceneNode* o = smgr->addTerrainSceneNode(
-		"img/terrain/map.png",
-		0,						// родительский объект
-		-1,						// id узла
-		vector3df(0,-100,0),    // позиция
-		vector3df(0,0,0),       // поворот
-		vector3df(5,0.5,5),       //масштаб
-		SColor (255, 255, 255, 255), //цвет вершин
-		5,                      // максимум LOD - level of details for the node (детализация)
-		ETPS_17,                // размер патча
-		4,                       // коэф-т размытия of the nodes
-		false
-	);
-	                      //указываем слой и файл текстуры
-	o->setMaterialTexture(0, driver->getTexture("img/terrain/texture.png"));
-	o->setMaterialType(EMT_DETAIL_MAP); // типа материала 
-	return o;
-}
-
-
-class MyEventReceiver : public IEventReceiver
-{
-public:
-	// This is the one method that we have to implement
-	virtual bool OnEvent(const SEvent& event)
-	{
-		// Remember whether each key is down or up
-		if (event.EventType == irr::EET_KEY_INPUT_EVENT)
-			KeyIsDown[event.KeyInput.Key] = event.KeyInput.PressedDown;
-
-	    //??? irr::EMIE_MOUSE_WHEEL
-		return false;
-	}
-
-	// This is used to check whether a key is being held down
-	virtual bool IsKeyDown(EKEY_CODE keyCode) const
-	{
-		return KeyIsDown[keyCode];
-	}
-
-	MyEventReceiver()
-	{
-		for (u32 i = 0; i<KEY_KEY_CODES_COUNT; ++i)
-			KeyIsDown[i] = false;
-	}
-
-private:
-	// We use this array to store the current state of each key
-	bool KeyIsDown[KEY_KEY_CODES_COUNT];
+struct map {
+    int face[3];
 };
 
-irr::f32 mouseWheel;
+struct node {
+    irr::core::vector3df vert;
+    int *next;
+};
 
-int main()
-{
-	//The event receiver for keeping the pressed keys is ready, the actual responses will be made inside the render loop, right before drawing the scene.
-	MyEventReceiver receiver;
-	//the root object for doing anything with the engine
-	//EDT_SOFTWARE - renders the img/terrain/texture.png, other - EDT_OPENGL - doesn't
-	device = createDevice(video::EDT_SOFTWARE, dimension2d<u32>(1080, 720), 32, fullscreen, false, false, &receiver);
-	if (!device)
-		return 1;
-	device->setWindowCaption(L"Hello World! - Irrlicht CALM DOWN Demo");
-	driver = device->getVideoDriver();
-	smgr = device->getSceneManager();
-	guienv = device->getGUIEnvironment();
-	guienv->addStaticText(L"Q - Up, E - Down, WASD - movement, ESC - exit",rect<s32>(10, 10, 260, 22), true);
-	
-	//                                    X   Y  Z      //look at
-	smgr->addCameraSceneNode(0, vector3df(0, 30, 1000), vector3df(0, -100, 0));
+struct nodes {
+    struct node *node_arr;
+    int node_len;
+    nodes (int map_size) {
+        node_arr = (struct node*)malloc((10 * map_size * map_size + 2) * sizeof(struct node));
+        node_len = 0;
+    }
+    int add(irr::core::vector3df vert) {
+        if (node_len) {
+            for (int i = 0; i < node_len; ++i) {
+                if (node_arr[i].vert.equals(vert)) {
+                    return i;
+                }
+            }
+        }
+        node_arr[node_len].vert = vert;
+        ++node_len;
+        return node_len - 1;
+    }
+    ~nodes() {
+        free(node_arr);
+    }
+};
 
-	//camera creation
-	ICameraSceneNode* camera = smgr->addCameraSceneNodeFPS(0, 100, 0.4);
-	camera->setPosition(vector3df(20, 0, 20));
-
-	//objects creation
-	ITerrainSceneNode* terrain = oCreateTerrain();
-
-	//The game cycle:
-	//We run the device in a while() loop, until the device does not want to run any more. 
-	//This would be when the user closes the window
-	while (device->run())
-	{
-		core::vector3df nodePosition = camera->getPosition();
-		if (receiver.IsKeyDown(irr::KEY_KEY_W))
-			nodePosition.Z += SPEED;
-		else if (receiver.IsKeyDown(irr::KEY_KEY_S))
-			nodePosition.Z -= SPEED;
-
-		if (receiver.IsKeyDown(irr::KEY_KEY_A))
-			nodePosition.X -= SPEED;
-		else if (receiver.IsKeyDown(irr::KEY_KEY_D))
-			nodePosition.X += SPEED;
-
-		if (receiver.IsKeyDown(irr::KEY_KEY_Q))
-			nodePosition.Y -= SPEED;
-		else if (receiver.IsKeyDown(irr::KEY_KEY_E))
-			nodePosition.Y += SPEED;
-
-		if (receiver.IsKeyDown(irr::KEY_ESCAPE))
-		{
-			device->drop();
-			exit(0);
-		}
-		camera->setPosition(nodePosition);
-
-		driver->beginScene(true, true, SColor(255, 157, 212, 140));
-		smgr->drawAll();
-		guienv->drawAll();
-		driver->endScene();
-	}
-
-	device->drop();
-	return 0;
+irr::core::vector3df vector_combine(irr::core::vector3df v1, irr::core::vector3df v2, irr::core::vector3df v3, float f1, float f2, float f3) {
+    irr::core::vector3df result;
+    result.X = f1 * v1.X + f2 * v2.X + f3 * v3.X;
+    result.Y = f1 * v1.Y + f2 * v2.Y + f3 * v3.Y;
+    result.Z = f1 * v1.Z + f2 * v2.Z + f3 * v3.Z;
+    return result;
 }
 
-/*
-Compile and run this, and I hope you have fun with your new little shader
-writing tool :).
-**/
+int main() {
+
+    // 34 and larger value crashes buffer
+    const int map_size = 33;
+
+    irr::IrrlichtDevice *device = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(1280, 720), 32, false);
+    if (!device) {
+        return 1;
+    }
+    irr::video::IVideoDriver *driver = device->getVideoDriver();
+    irr::scene::ISceneManager *manager = device->getSceneManager();
+    manager->addCameraSceneNode(0, irr::core::vector3df(0.0, -1.7, 0.0), irr::core::vector3df(0.0, 0.0, 0.0));
+    irr::scene::SMesh *mesh = new irr::scene::SMesh();
+    irr::scene::SMeshBuffer *buffer = new irr::scene::SMeshBuffer();
+    mesh->addMeshBuffer(buffer);
+    buffer->drop();
+
+    irr::f32 angy0 = irr::core::PI / 2 - atan(1 / 2);
+    irr::f32 angy1 = irr::core::PI / 2 - atan(-1 / 2);
+    irr::f32 angz0 = irr::core::PI / 5;
+    irr::f32 angz1 = angz0 * 2;
+    irr::f32 angz2 = angz1 * 2;
+    irr::f32 x0 = 0;
+    irr::f32 x1 = sin(angy0) * sin(angz2);
+    irr::f32 x2 = sin(angy0) * sin(angz1);
+    irr::f32 y0 = cos(angy0);
+    irr::f32 y1 = 1;
+    irr::f32 z0 = 0;
+    irr::f32 z1 = sin(angy0) * cos(angz1);
+    irr::f32 z2 = sin(angy1) * cos(angz0);
+    irr::f32 z3 = sin(angy0);
+
+    irr::core::vector3df v[12];
+
+    v[0] = irr::core::vector3df(x0, y1, z0);
+    v[1] = irr::core::vector3df(x0, y0, z3);
+    v[2] = irr::core::vector3df(x2, y0, z1);
+    v[3] = irr::core::vector3df(x1, y0, -z2);
+    v[4] = irr::core::vector3df(-x1, y0, -z2);
+    v[5] = irr::core::vector3df(-x2, y0, z1);
+    v[6] = irr::core::vector3df(x1, -y0, z2);
+    v[7] = irr::core::vector3df(x2, -y0, -z1);
+    v[8] = irr::core::vector3df(x0, -y0, -z3);
+    v[9] = irr::core::vector3df(-x2, -y0, -z1);
+    v[10] = irr::core::vector3df(-x1, -y0, z2);
+    v[11] = irr::core::vector3df(x0, -y1, z0);
+
+    irr::core::vector3df f[20][3];
+
+    f[0][0] = v[0];
+    f[0][1] = v[1];
+    f[0][2] = v[2];
+
+    f[1][0] = v[0];
+    f[1][1] = v[2];
+    f[1][2] = v[3];
+
+    f[2][0] = v[0];
+    f[2][1] = v[3];
+    f[2][2] = v[4];
+
+    f[3][0] = v[0];
+    f[3][1] = v[4];
+    f[3][2] = v[5];
+
+    f[4][0] = v[0];
+    f[4][1] = v[5];
+    f[4][2] = v[1];
+
+    f[5][0] = v[1];
+    f[5][1] = v[6];
+    f[5][2] = v[2];
+
+    f[6][0] = v[2];
+    f[6][1] = v[6];
+    f[6][2] = v[7];
+
+    f[7][0] = v[2];
+    f[7][1] = v[7];
+    f[7][2] = v[3];
+
+    f[8][0] = v[3];
+    f[8][1] = v[7];
+    f[8][2] = v[8];
+
+    f[9][0] = v[3];
+    f[9][1] = v[8];
+    f[9][2] = v[4];
+
+    f[10][0] = v[4];
+    f[10][1] = v[8];
+    f[10][2] = v[9];
+
+    f[11][0] = v[4];
+    f[11][1] = v[9];
+    f[11][2] = v[5];
+
+    f[12][0] = v[5];
+    f[12][1] = v[9];
+    f[12][2] = v[10];
+
+    f[13][0] = v[5];
+    f[13][1] = v[10];
+    f[13][2] = v[1];
+
+    f[14][0] = v[1];
+    f[14][1] = v[10];
+    f[14][2] = v[6];
+
+    f[15][0] = v[6];
+    f[15][1] = v[11];
+    f[15][2] = v[7];
+
+    f[16][0] = v[7];
+    f[16][1] = v[11];
+    f[16][2] = v[8];
+
+    f[17][0] = v[8];
+    f[17][1] = v[11];
+    f[17][2] = v[9];
+
+    f[18][0] = v[9];
+    f[18][1] = v[11];
+    f[18][2] = v[10];
+
+    f[19][0] = v[10];
+    f[19][1] = v[11];
+    f[19][2] = v[6];
+
+    int i = 0;
+    float gap = 0.03;
+
+    const int map_len = 20 * map_size * map_size;
+    struct map map[map_len];
+    struct nodes nodes(map_size);
+
+    for (int j = 0; j < 20; ++j) {
+        for (int k = 0; k < map_size; ++k) {
+            for (int l = 0; l < map_size; ++l) {
+                if ((k + l) <= (map_size - 1)) {
+                    map[i].face[0] = nodes.add(vector_combine(f[j][0], f[j][1], f[j][2], k, l, map_size - k - l));
+                    map[i].face[1] = nodes.add(vector_combine(f[j][0], f[j][1], f[j][2], k + 1, l, map_size - 1 - k - l));
+                    map[i].face[2] = nodes.add(vector_combine(f[j][0], f[j][1], f[j][2], k, l + 1, map_size - 1 - k - l));
+                    ++i;
+                    if ((k + l) != map_size - 1) {
+                        map[i].face[0] = nodes.add(vector_combine(f[j][0], f[j][1], f[j][2], k + 1, l + 1, map_size - 2 - k - l));
+                        map[i].face[1] = map[i - 1].face[2];
+                        map[i].face[2] = map[i - 1].face[1];
+                        ++i;
+                    }
+                }
+            }
+        }
+    }
+
+    for (i = 0; i < nodes.node_len; ++i) {
+        nodes.node_arr[i].vert.normalize();
+    }
+
+    buffer->Vertices.reallocate(map_len * 3);
+    buffer->Vertices.set_used(map_len * 3);
+    for (i = 0; i < map_len; ++i) {
+        irr::core::vector3df temp = vector_combine(nodes.node_arr[map[i].face[0]].vert, nodes.node_arr[map[i].face[1]].vert, nodes.node_arr[map[i].face[2]].vert, 1 - gap * 2, gap, gap);
+        buffer->Vertices[i * 3 + 0] = irr::video::S3DVertex(temp, temp, irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+        temp = vector_combine(nodes.node_arr[map[i].face[0]].vert, nodes.node_arr[map[i].face[1]].vert, nodes.node_arr[map[i].face[2]].vert, gap, 1 - gap * 2, gap);
+        buffer->Vertices[i * 3 + 1] = irr::video::S3DVertex(temp, temp, irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+        temp = vector_combine(nodes.node_arr[map[i].face[0]].vert, nodes.node_arr[map[i].face[1]].vert, nodes.node_arr[map[i].face[2]].vert, gap, gap, 1 - gap * 2);
+        buffer->Vertices[i * 3 + 2] = irr::video::S3DVertex(temp, temp, irr::video::SColor(255, 0, 255, 0), irr::core::vector2df(0, 0));
+    }
+
+    buffer->Indices.reallocate(map_len * 3);
+    buffer->Indices.set_used(map_len * 3);
+    for (i = 0; i < map_len; ++i) {
+        buffer->Indices[i * 3 + 0] = i * 3 + 0;
+        buffer->Indices[i * 3 + 1] = i * 3 + 1;
+        buffer->Indices[i * 3 + 2] = i * 3 + 2;
+    }
+
+    buffer->recalculateBoundingBox();
+
+    irr::scene::IMeshSceneNode *node = manager->addMeshSceneNode(mesh);
+
+    node->setMaterialFlag(irr::video::EMF_LIGHTING, false);
+
+    while (device->run()) {
+        driver->beginScene(true, true, irr::video::SColor(0, 0, 0, 0));
+        manager->drawAll();
+        driver->endScene();
+    }
+
+    device->drop();
+
+    return EXIT_SUCCESS;
+
+}
