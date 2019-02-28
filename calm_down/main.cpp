@@ -47,34 +47,64 @@ irr::core::vector3df vector_combine(irr::core::vector3df v1, irr::core::vector3d
     return result;
 }
 
+class MyEventReceiver: public irr::IEventReceiver {
+public:
+    virtual bool OnEvent(const irr::SEvent& event) {
+        if (event.EventType == irr::EET_KEY_INPUT_EVENT) {
+            KeyIsDown[event.KeyInput.Key] = event.KeyInput.PressedDown;
+        }
+        return false;
+    }
+    virtual bool IsKeyDown(irr::EKEY_CODE keyCode) const {
+        return KeyIsDown[keyCode];
+    }
+    MyEventReceiver() {
+        for (irr::u32 i = 0; i < irr::KEY_KEY_CODES_COUNT; ++i) {
+            KeyIsDown[i] = false;
+        }
+    }
+private:
+    bool KeyIsDown[irr::KEY_KEY_CODES_COUNT];
+};
+
+class MyCamera: public irr::scene::ICameraSceneNode {
+
+};
+
 int main() {
 
     // 34 and larger value crashes buffer
-    const int map_size = 33;
+    const int map_size = 16;
 
-    irr::IrrlichtDevice *device = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(1280, 720), 32, false);
+    MyEventReceiver receiver;
+
+    irr::IrrlichtDevice *device = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(1280, 720), 32, false, false, false, &receiver);
     if (!device) {
         return 1;
     }
     irr::video::IVideoDriver *driver = device->getVideoDriver();
     irr::scene::ISceneManager *manager = device->getSceneManager();
-    manager->addCameraSceneNode(0, irr::core::vector3df(0.0, -1.7, 0.0), irr::core::vector3df(0.0, 0.0, 0.0));
+    irr::scene::ISceneNode *empty = manager->addEmptySceneNode();
+    irr::scene::ISceneNode *camera_target = manager->addEmptySceneNode(empty);
+    irr::scene::ICameraSceneNode *camera = manager->addCameraSceneNode(empty, irr::core::vector3df(0.0f, (float)map_size + 1.5f, 0.0f));
+    camera_target->setPosition(irr::core::vector3df(0.0f, (float)map_size + 1.5f, (float)map_size + 1.5f));
+    camera->setTarget(camera_target->getAbsolutePosition());
     irr::scene::SMesh *mesh = new irr::scene::SMesh();
     irr::scene::SMeshBuffer *buffer = new irr::scene::SMeshBuffer();
     mesh->addMeshBuffer(buffer);
     buffer->drop();
 
-    irr::f32 angy0 = irr::core::PI / 2 - atan(1 / 2);
-    irr::f32 angy1 = irr::core::PI / 2 - atan(-1 / 2);
-    irr::f32 angz0 = irr::core::PI / 5;
-    irr::f32 angz1 = angz0 * 2;
-    irr::f32 angz2 = angz1 * 2;
-    irr::f32 x0 = 0;
+    irr::f32 angy0 = irr::core::PI / 2.0f - atan(1.0f / 2.0f);
+    irr::f32 angy1 = irr::core::PI / 2.0f - atan(-1.0f / 2.0f);
+    irr::f32 angz0 = irr::core::PI / 5.0f;
+    irr::f32 angz1 = angz0 * 2.0f;
+    irr::f32 angz2 = angz1 * 2.0f;
+    irr::f32 x0 = 0.0f;
     irr::f32 x1 = sin(angy0) * sin(angz2);
     irr::f32 x2 = sin(angy0) * sin(angz1);
     irr::f32 y0 = cos(angy0);
-    irr::f32 y1 = 1;
-    irr::f32 z0 = 0;
+    irr::f32 y1 = 1.0f;
+    irr::f32 z0 = 0.0f;
     irr::f32 z1 = sin(angy0) * cos(angz1);
     irr::f32 z2 = sin(angy1) * cos(angz0);
     irr::f32 z3 = sin(angy0);
@@ -177,7 +207,7 @@ int main() {
     f[19][2] = v[6];
 
     int i = 0;
-    float gap = 0.03;
+    float gap = 0.03f;
 
     const int map_len = 20 * map_size * map_size;
     struct map map[map_len];
@@ -203,7 +233,7 @@ int main() {
     }
 
     for (i = 0; i < nodes.node_len; ++i) {
-        nodes.node_arr[i].vert.normalize();
+        nodes.node_arr[i].vert.setLength(map_size);
     }
 
     buffer->Vertices.reallocate(map_len * 3);
@@ -232,6 +262,23 @@ int main() {
     node->setMaterialFlag(irr::video::EMF_LIGHTING, false);
 
     while (device->run()) {
+    	camera->bindTargetAndRotation(false);
+    	irr::core::vector3df r = empty->getRotation();
+    	if (receiver.IsKeyDown(irr::KEY_KEY_W)) {
+    	    r.X = r.X + 0.1f;
+    	}
+    	if (receiver.IsKeyDown(irr::KEY_KEY_S)) {
+    		r.X = r.X - 0.1f;
+    	}
+        if (receiver.IsKeyDown(irr::KEY_KEY_A)) {
+        	r.Z = r.Z + 0.1f;
+        }
+    	if (receiver.IsKeyDown(irr::KEY_KEY_D)) {
+    		r.Z = r.Z - 0.1f;
+    	}
+    	empty->setRotation(r);
+    	camera->setTarget(camera_target->getAbsolutePosition());
+    	camera->setUpVector(camera->getAbsolutePosition());
         driver->beginScene(true, true, irr::video::SColor(0, 0, 0, 0));
         manager->drawAll();
         driver->endScene();
